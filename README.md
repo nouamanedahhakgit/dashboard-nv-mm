@@ -55,6 +55,25 @@ python -m venv .venv
 
 Open [http://localhost:8501](http://localhost:8501).
 
+## Update an existing clone
+
+This repository uses the `main` branch. From inside the cloned repository run:
+
+```bat
+git fetch origin main
+git switch main
+git pull --ff-only origin main
+```
+
+If the project has not yet been cloned on the device, use:
+
+```bat
+git clone --branch main https://github.com/nouamanedahhakgit/dashboard-nv-mm.git
+```
+
+Run these commands inside `dashboard-nv-mm`, not inside an unrelated copy of
+`vessel-visit-command-center` that has no `.git` directory.
+
 ## Optional offline testing
 
 Offline API XML and Excel samples are not committed. Store them locally under
