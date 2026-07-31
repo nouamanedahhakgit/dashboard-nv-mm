@@ -1,0 +1,24 @@
+# Private credentials and local configuration
+nevis_api.ini
+.env
+.env.*
+
+# Operational/test data must never be committed
+data/
+*.xlsx
+*.xls
+*.csv
+*.pkl
+
+# Runtime and generated content
+.runtime_cache/
+.venv/
+__pycache__/
+*.py[cod]
+versions/
+
+# Local IDE/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
