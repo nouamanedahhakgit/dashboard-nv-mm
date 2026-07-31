@@ -22,34 +22,11 @@ from urllib3.util.retry import Retry
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = APP_DIR.parent / "reporting" / "moveHistory" / "all data new"
 HANANE_REPORT = APP_DIR.parent / "HANANE RAPPORT.xls"
+DATA_DIR = Path(os.getenv("VESSEL_DATA_DIR", str(DEFAULT_DATA_DIR)))
+MODE = os.getenv("VESSEL_DATA_MODE", "live").lower()
 API_CONFIG_FILE = Path(
     os.getenv("NEVIS_API_CONFIG", str(APP_DIR / "nevis_api.ini"))
 )
-BOOT_CONFIG = configparser.RawConfigParser()
-if API_CONFIG_FILE.exists():
-    BOOT_CONFIG.read(API_CONFIG_FILE, encoding="utf-8")
-CONFIGURED_DATA_DIR = BOOT_CONFIG.get("app", "data_dir", fallback="data").strip()
-CONFIGURED_DATA_PATH = Path(CONFIGURED_DATA_DIR)
-if not CONFIGURED_DATA_PATH.is_absolute():
-    CONFIGURED_DATA_PATH = APP_DIR / CONFIGURED_DATA_PATH
-DATA_DIR = CONFIGURED_DATA_PATH
-MODE = BOOT_CONFIG.get("app", "mode", fallback="test").strip().lower()
-UNIT_API_SAMPLE_FILE = Path(
-    BOOT_CONFIG.get(
-        "app", "unit_api_sample_file", fallback="data/unit_api_response.xml"
-    ).strip()
-)
-VESSEL_API_SAMPLE_FILE = Path(
-    BOOT_CONFIG.get(
-        "app",
-        "vessel_api_sample_file",
-        fallback="data/vessel_visit_api_response.xml",
-    ).strip()
-)
-if not UNIT_API_SAMPLE_FILE.is_absolute():
-    UNIT_API_SAMPLE_FILE = APP_DIR / UNIT_API_SAMPLE_FILE
-if not VESSEL_API_SAMPLE_FILE.is_absolute():
-    VESSEL_API_SAMPLE_FILE = APP_DIR / VESSEL_API_SAMPLE_FILE
 LIVE_CACHE_DIR = APP_DIR / ".runtime_cache"
 
 st.set_page_config(
@@ -442,8 +419,8 @@ def _api_session(settings):
         raise_on_status=False,
     )
     session = requests.Session()
-    # Nevis is an internal service. Corporate proxy variables can accept the
-    # TCP connection but never return the intranet response.
+    # Nevis is an internal 172.16.x.x service. Corporate proxy variables can
+    # accept the TCP connection but never return this intranet response.
     session.trust_env = False
     session.auth = (settings["username"], settings["password"])
     session.headers.update(
@@ -534,22 +511,6 @@ def _prepare_live_visits(visits):
     visits["Visit"] = visits["Visit"].astype(str).str.strip()
     visits["Phase"] = visits["Phase"].astype(str).str.strip().str.title()
     return visits.drop_duplicates(subset=["Visit"], keep="last")
-
-
-@st.cache_data(show_spinner=False)
-def read_api_sample_data(unit_response_path, vessel_response_path):
-    """Load the saved XML responses using the same schema as the live APIs."""
-    unit_path = Path(unit_response_path)
-    vessel_path = Path(vessel_response_path)
-    missing = [
-        str(path) for path in (unit_path, vessel_path) if not path.exists()
-    ]
-    if missing:
-        raise FileNotFoundError("Missing API sample files: " + ", ".join(missing))
-    units = _prepare_live_units(_xml_response_frame(unit_path.read_bytes()))
-    visits = _prepare_live_visits(_xml_response_frame(vessel_path.read_bytes()))
-    units.attrs["source_status"] = "saved API responses"
-    return units, visits
 
 
 def _cache_is_fresh(path, ttl_seconds):
@@ -1469,15 +1430,7 @@ def open_vessel_dashboard(target_visit):
 
 DATA_SOURCE_WARNING = ""
 try:
-    if MODE == "test":
-        units, visits = read_test_data(str(DATA_DIR))
-    elif MODE in {"api_test", "sample", "api_sample"}:
-        units, visits = read_api_sample_data(
-            str(UNIT_API_SAMPLE_FILE),
-            str(VESSEL_API_SAMPLE_FILE),
-        )
-    else:
-        units, visits = read_live_data()
+    units, visits = read_test_data(str(DATA_DIR)) if MODE == "test" else read_live_data()
     # Operational KPIs must be based on the vessel movement source only.
     # HANANE is intentionally excluded: its crane rows cannot be safely
     # attributed to inactivity gaps inferred from container timestamps.

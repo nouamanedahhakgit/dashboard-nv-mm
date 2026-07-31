@@ -1,92 +1,41 @@
-# Nevis Vessel Statistics Dashboard
+# Nevis Vessel Command Center
 
-A Streamlit dashboard for vessel-visit operations, shift performance, container
-flow, terminal profiles, stops, GMPH, and detailed unit inspection.
+One dashboard, one Python file. The app reads the final Excel exports in test
+mode and keeps a dedicated function ready for a future API.
 
-## Security
+## Run
 
-This repository intentionally contains **no operational data and no credentials**.
-
-- `nevis_api.ini` is ignored by Git.
-- `data/` is ignored by Git.
-- Excel, CSV, pickle, runtime cache, and virtual-environment files are ignored.
-- `nevis_api.example.ini` contains placeholders only.
-
-Never put a real username, password, API token, or production host configuration
-inside `dashboard.py` or `nevis_api.example.ini`.
-
-## Configure
-
-Create the private configuration file:
-
-```bat
-copy nevis_api.example.ini nevis_api.ini
-notepad nevis_api.ini
+```powershell
+pip install -r requirements.txt
+streamlit run dashboard.py
 ```
 
-Set the real Nevis URLs and Basic Auth credentials only in `nevis_api.ini`:
+By default the app reads `../reporting/moveHistory/all data new`. Override it
+with `VESSEL_DATA_DIR`. Keep `VESSEL_DATA_MODE=test` until the live API is
+available.
+# Nevis Vessel Command Center
+
+## Live API configuration
+
+Edit `nevis_api.ini` and enter the Nevis Basic Auth username and password:
 
 ```ini
-[app]
-mode = live
-
 [auth]
 username = YOUR_USERNAME
 password = YOUR_PASSWORD
 ```
 
-The private file remains local because `.gitignore` excludes it.
+The dashboard starts in `live` mode by default.
 
-## Run on Windows
+- Vessel visits are fetched from the `vesselVisits` query.
+- Only units linked to the returned working visits are fetched from `units_1`.
+- Unit queries run concurrently with bounded timeouts and retries.
+- Successful responses are cached for 30 seconds.
+- A local safety snapshot is used temporarily if Nevis becomes unavailable.
+- If no live snapshot exists yet, the Excel test snapshot keeps the interface open.
 
-Install Python 3.12 (64-bit), then run:
+Configuration values can be overridden with environment variables such as
+`NEVIS_API_USERNAME`, `NEVIS_API_PASSWORD`, `NEVIS_UNIT_API_URL`, and
+`NEVIS_VESSEL_VISIT_API_URL`.
 
-```bat
-start_dashboard.bat
-```
-
-Or run manually:
-
-```bat
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python -m streamlit run dashboard.py
-```
-
-Open [http://localhost:8501](http://localhost:8501).
-
-## Update an existing clone
-
-This repository uses the `main` branch. From inside the cloned repository run:
-
-```bat
-git fetch origin main
-git switch main
-git pull --ff-only origin main
-```
-
-If the project has not yet been cloned on the device, use:
-
-```bat
-git clone --branch main https://github.com/nouamanedahhakgit/dashboard-nv-mm.git
-```
-
-Run these commands inside `dashboard-nv-mm`, not inside an unrelated copy of
-`vessel-visit-command-center` that has no `.git` directory.
-
-## Optional offline testing
-
-Offline API XML and Excel samples are not committed. Store them locally under
-`data/` and select the appropriate private mode in `nevis_api.ini`:
-
-```ini
-[app]
-mode = api_test
-```
-
-or:
-
-```ini
-[app]
-mode = test
-```
+Set `VESSEL_DATA_MODE=test` to force the Excel test data.
